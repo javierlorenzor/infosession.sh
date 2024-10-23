@@ -1,0 +1,1 @@
+# infosession.sh
