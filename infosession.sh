@@ -13,14 +13,13 @@ TEXT_MAGENTA=$(tput setaf 5)
 ERROR="${TEXT_RED}${TEXT_BOLD}Deberás consultar -h o --help para más información.${TEXT_RESET}"
 HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos.${TEXT_RESET}"
 PROGNAME=$(basename $0)
-CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID      USER    TTY   %MEM  CMD${TEXT_RESET}"
+CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
 
 # Tabla basica 
 tabla_b=$(ps -eo sid,pgid,pid,user,tty,%mem,cmd --no-headers --sort=user | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}') 
 if [[ $? -ne 0 ]]; then
     salida_error "Error al ejecutar el comando ps."
 fi
-
 
 # Función para manejar errores
 salida_error() 
@@ -47,8 +46,6 @@ ayuda()
     echo 
 }
 
-
-# Función para mostrar procesos sin PID 0 y del usuario bash
 no_option() {
     echo -e "$CABECERA"
     echo "$tabla_b" | awk '$3 != "0" && $7 ~/bash/' | column -t
@@ -57,44 +54,10 @@ no_option() {
     fi
 }
 
-# Función para mostrar procesos con PID 0 (-z)
-pid0() {
-    echo -e "$CABECERA"
-    echo "$tabla_b" | column -t
-    if [[ $? -ne 0 ]]; then
-        salida_error "Error al mostrar todos los procesos, incluyendo PID 0."
-    fi
-    exit 0
-}
-
-# Función para procesar la opción -u (usuario)
-filtrar_por_usuario() {
-    echo -e "$CABECERA"
-    echo "$tabla_b" | awk -v usuario="$1" '$4 == usuario' | column -t
-    if [[ $? -ne 0 ]]; then
-        salida_error "Error al filtrar por usuario."
-    fi
-}
-
-# Función para procesar la opción -d (directorio)
-filtrar_por_directorio() {
-    echo -e "$CABECERA"
-    lsof_output=$(lsof +d "$1" 2>/dev/null | awk '{print $2}') || salida_error "Fallo al ejecutar lsof en el directorio $1."
-    if [[ $? -ne 0 ]]; then
-        salida_error "Error al obtener procesos con archivos abiertos en $1."
-    fi
-    filtrado=$(echo "$tabla_b" | awk 'NR==FNR {pids[$1]; next} $3 in pids' <(echo "$lsof_output"))
-    if [[ $? -ne 0 ]]; then
-        salida_error "Error al filtrar procesos con archivos abiertos en $1."
-    fi
-    [[ -z "$filtrado" ]] && salida_error "No se encontraron procesos con archivos abiertos en $1."
-    echo "$filtrado" | column -t
-    exit 0
-}
-
 # Variables para las opciones
-usuario=""
-directorio=""
+OPCION_Z=false
+OPCION_D=""
+OPCION_U=""
 
 # Si no hay opciones, se usa no_option
 if [[ $# -eq 0 ]]; then
@@ -102,31 +65,25 @@ if [[ $# -eq 0 ]]; then
     if [[ $? -ne 0 ]]; then
         salida_error "Error en la función no_option."
     fi
+    exit 0
 else
     # Procesar opciones
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -z) # Mostrar todos los procesos, incluyendo PID 0
-                pid0
+                OPCION_Z=true
                 shift
                 ;;
             -u) # Filtro por usuario
-                if [[ -n $2 ]]; then
-                    usuario="$2"
-                    filtrar_por_usuario "$usuario"
-                    shift 2
-                else
-                    salida_error "Debes proporcionar un nombre de usuario con la opción -u."
-                fi
+                shift
+                while [[ "$1" && "$1" != "-"* ]]; do
+                    OPCION_U+="$1 "
+                    shift
+                done
                 ;;
             -d) # Filtro por directorio
-                if [[ -n $2 ]]; then
-                    directorio="$2"
-                    filtrar_por_directorio "$directorio"
-                    shift 2
-                else
-                    salida_error "Debes proporcionar una ruta de directorio con la opción -d."
-                fi
+                OPCION_D="$2"
+                shift 2
                 ;;
             -h|--help) # Mostrar la ayuda
                 ayuda
@@ -139,5 +96,40 @@ else
     done
 fi
 
+# Aplicar filtros
+
+# Filtrar por usuario
+if [[ -n "$OPCION_D" ]]; then  # comprobamos que la variable no esté vacía
+  tabla_b=$(echo "$tabla_b" | grep -E "$(echo $OPCION_U | sed 's/ /|/g')")
+fi
+
+# Filtrar por directorio
+if [[ -n "$OPCION_D" ]]; then
+    # Comprobar si el directorio existe
+    if [[ ! -d "$OPCION_D" ]]; then
+        salida_error "El directorio especificado no existe."
+    fi
+
+    #sacamos los pid de los procesos que tienen archivos abiertos en el directorio especificado 
+    pid_lsof_local=$(lsof +d $OPCION_D | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
+
+ 
+
+  
+    if [[ -z "$pid_lsof_local" ]]; then
+        error_exit "No hay procesos con archivos abiertos en el directorio especificado."
+    fi
+    
+
+    # Filtrar los procesos que tengan archivos abiertos en el directorio especificado
+    #tabla_local=$(echo "$tabla_b" | grep -wFf <(echo "$pid_lsof_local"))
+
+    for pid in $pid_lsof_local; do
+        tabla_local=$(echo "$tabla_b" | awk -v pid="$pid" '$3 == pid')
+        echo "$tabla_local"
+    done | column -t
+
+fi
 
 
+#
