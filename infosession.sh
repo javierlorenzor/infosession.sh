@@ -76,10 +76,13 @@ else
                 ;;
             -u) # Filtro por usuario
                 shift
+                if [[ -z "$1" || "$1" == "-"* ]]; then
+                    salida_error "Se requiere un nombre de usuario después de la opción -u."
+                fi
                 while [[ "$1" && "$1" != "-"* ]]; do
                     OPCION_U+="$1 "
-                    shift
                 done
+                shift
                 ;;
             -d) # Filtro por directorio
                 OPCION_D="$2"
@@ -99,7 +102,7 @@ fi
 # Aplicar filtros
 
 # Filtrar por usuario
-if [[ -n "$OPCION_D" ]]; then  # comprobamos que la variable no esté vacía
+if [[ -n "$OPCION_U" ]]; then  # comprobamos que la variable no esté vacía
   tabla_b=$(echo "$tabla_b" | grep -E "$(echo $OPCION_U | sed 's/ /|/g')")
 fi
 
@@ -113,16 +116,13 @@ if [[ -n "$OPCION_D" ]]; then
     #sacamos los pid de los procesos que tienen archivos abiertos en el directorio especificado 
     pid_lsof_local=$(lsof +d $OPCION_D | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
 
- 
-
-  
     if [[ -z "$pid_lsof_local" ]]; then
         error_exit "No hay procesos con archivos abiertos en el directorio especificado."
     fi
     
-
     # Filtrar los procesos que tengan archivos abiertos en el directorio especificado
     #tabla_local=$(echo "$tabla_b" | grep -wFf <(echo "$pid_lsof_local"))
+    echo -e "$CABECERA"
 
     for pid in $pid_lsof_local; do
         tabla_local=$(echo "$tabla_b" | awk -v pid="$pid" '$3 == pid')
@@ -132,4 +132,7 @@ if [[ -n "$OPCION_D" ]]; then
 fi
 
 
-#
+if [[ "$OPCION_Z" == true ]]; then
+    echo -e "$CABECERA"
+    echo "$tabla_b" | column -t
+fi
