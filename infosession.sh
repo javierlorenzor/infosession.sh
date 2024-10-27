@@ -14,6 +14,7 @@ ERROR="${TEXT_RED}${TEXT_BOLD}Deberás consultar -h o --help para más informaci
 HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos.${TEXT_RESET}"
 PROGNAME=$(basename $0)
 CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
+CABECERA2="${TEXT_BLUE}${TEXT_BOLD}SID    GID     %MEM    PID     UID  TTY CMD ${TEXT_RESET}" 
 
 # Tabla basica 
 tabla_b=$(ps -eo sid,pgid,pid,user,tty,%mem,cmd --no-headers --sort=user | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}') 
@@ -42,6 +43,11 @@ ayuda()
     echo "-z: La tabla muestra también los procesos cuyo identificador sea 0."
     echo "-u [usuario]: Muestra los procesos cuyo usuario efectivo sea el especificado."
     echo "-d [ruta]: Muestra solo los procesos que tengan archivos abiertos en el directorio especificado."
+    echo "-t: Muestra solo los procesos que tengan una terminal controladora asignada."
+    echo "-e: Muestra información adicional sobre la sesión."
+    echo "-sm: Ordena la tabla por el porcentaje de memoria consumida."
+    echo "-sg: Ordena la tabla por el número de grupos de procesos."
+    echo "-r: Invierte el orden de la tabla."
     echo "-h|--help: Muestra esta ayuda."
     echo 
 }
@@ -58,6 +64,12 @@ no_option() {
 OPCION_Z=false
 OPCION_D=""
 OPCION_U=""
+OPCION_T=false
+OPCION_E=false
+OPCION_SM=false
+OPCION_SG=false
+OPCION_R=false
+
 
 # Si no hay opciones, se usa no_option
 if [[ $# -eq 0 ]]; then
@@ -87,6 +99,26 @@ else
             -d) # Filtro por directorio
                 OPCION_D="$2"
                 shift 2
+                ;;
+            -t) #filtro por terminal 
+                OPCION_T=true
+                shift
+                ;;
+            -e) #Infromacion de sesion 
+                OPCION_E=true
+                shift
+                ;;
+            -sm) #Ordenar por memoria
+                OPCION_SM=true
+                shift
+                ;;
+            -sg) #Ordenar por grupos
+                OPCION_SG=true
+                shift
+                ;;
+            -r) #Invertir el orden
+                OPCION_R=true
+                shift
                 ;;
             -h|--help) # Mostrar la ayuda
                 ayuda
@@ -136,3 +168,65 @@ if [[ "$OPCION_Z" == true ]]; then
     echo -e "$CABECERA"
     echo "$tabla_b" | column -t
 fi
+
+if [[ "$OPCION_T" == true ]]; then
+    echo -e "$CABECERA"
+    echo "$tabla_b" | awk '$5 != "?"' | column -t
+fi
+
+if [[ "$OPCION_E" == true ]]; then
+    
+    # 1. Identificador de sesión (SID)
+    SID=$(echo "$tabla_b" | head -n 1 )
+    
+    # 2. Total de grupos de procesos diferentes de esa sesión
+    gid_dif=$(echo "$tabla_b" | awk -v sid="$SID" '$1 == sid {print $2}' | sort -u | wc -l)
+    
+    # 3. Total del porcentaje de memoria consumida por todos los procesos de la sesión
+    percent_t=$(echo "$tabla_b" | awk -v sid="$SID" '$1 == sid {sum+=$6} END {print sum "%"}')
+   
+    # 4. Identificador de proceso del proceso líder de la sesión
+    pid=$(echo "$tabla_b" | awk -v sid="$SID" '$1 == sid && $1 == $3 {print $3}' | head -n 1)
+
+    # 5. Usuario efectivo del proceso líder de la sesión
+    user=$(echo "$tabla_b" | awk -v sid="$SID" '$1 == sid && $1 == $3 {print $4}' | head -n 1)
+
+    # 6. Terminal controladora de la sesión (si la tuviera)
+    tty=$(echo "$tabla_b" | awk -v sid="$SID" '$1 == sid && $1 == $3 {print $5}' | head -n 1)
+
+    # 7. Comando del proceso líder de la sesión
+    cmd=$(echo "$tabla_b" | awk -v sid="$SID" '$1 == sid && $1 == $3 {print $7}' | head -n 1)
+
+    tabla_s=$(echo "$SID $gid_dif $percent_t $pid $user $tty $cmd")
+
+    echo -e "$CABECERA2"
+    echo "$tabla_s" | column -t
+    
+
+    
+else 
+    echo -e "$CABECERA"
+    echo "$tabla_b" | column -t
+    
+fi
+
+# Ordenar por memoria (opción -sm)
+if [[ "$OPCION_SM" == true ]]; then
+    echo -e "$CABECERA"
+    echo "$tabla_b" | column -t | sort -k6 -g
+fi
+
+# Ordenar por número de grupos de procesos (opción -sg)
+if [[ "$OPCION_SG" == true ]]; then
+    echo -e "$CABECERA"
+    echo "$tabla_b" | column -t | sort -k2 -n 
+fi
+
+# Invertir el orden (opción -r)
+if [[ "$OPCION_R" == true ]]; then
+    echo -e "$CABECERA"
+    echo "$tabla_b" | column -t | sort1 -r
+fi
+
+
+exit 0
