@@ -120,20 +120,20 @@ fi
 if [[ -n "$OPCION_U" && -n "$OPCION_D" ]]; then
     # Comprobar si el directorio existe
     if [[ ! -d "$OPCION_D" ]]; then
-        salida_error "El directorio especificado no existe."
+        salida_error "Se ha introducido un directorio especificado no existe."
     fi
 
     # Sacar los PID de los procesos que tienen archivos abiertos en el directorio especificado 
     pid_lsof_local=$(lsof +d "$OPCION_D" | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
 
     if [[ -z "$pid_lsof_local" ]]; then
-        salida_error "No hay procesos con archivos abiertos en el directorio especificado."
+        salida_error "Se ha introducido un directorio donde no hay procesos con archivos abiertos"
     fi
 
     echo -e "$CABECERA"
     # Filtrar los procesos de un usuario específico que también estén en el directorio especificado
-    for pid in $pid_lsof_local; do
-        tabla_local=$(echo "$tabla_b" | awk -v pid="$pid" '$3 == pid' | grep "$OPCION_U")
+    for i in $pid_lsof_local; do
+        tabla_local=$(echo "$tabla_b" | awk '$3 == '$i' && $4 == '$OPCION_U'')
         echo "$tabla_local"
     done | column -t
     exit 0
@@ -143,9 +143,14 @@ fi
 # Filtrar por usuario (OPCION -u)
 if [[ -n "$OPCION_U" ]]; then  # comprobamos que la variable no esté vacía
     tabla_u=$(echo "$tabla_b" | grep "$OPCION_U" ) 
-    echo -e "$CABECERA"
-    echo "$tabla_u" | column -t
-    exit 0 
+    #Comprobamos que la tabla no esté vacía
+    if [[ -z "$tabla_u" ]]; then
+        salida_error "No hay procesos con el usuario especificado."
+    else 
+        echo -e "$CABECERA"
+        echo "$tabla_u" | column -t
+        exit 0
+    fi 
 fi
 
 # Filtrar por directorio (OPCION -d)
@@ -153,13 +158,13 @@ if [[ -n "$OPCION_D" ]]; then
     # Comprobar si el directorio existe
     if [[ ! -d "$OPCION_D" ]]; then
         salida_error "El directorio especificado no existe."
-    fi
+    fi 
 
-    #sacamos los pid de los procesos que tienen archivos abiertos en el directorio especificado 
+    #sacamos los pid de los procesos que tienen archivos abiertos en el directorio especificado (tr para que esten todos en una línea )
     pid_lsof_local=$(lsof +d $OPCION_D | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
 
     if [[ -z "$pid_lsof_local" ]]; then
-        error_exit "No hay procesos con archivos abiertos en el directorio especificado."
+        error_exit "No hay procesos con archivos abiertos en el directorio que se ha especificado"
     fi
     
     # Filtrar los procesos que tengan archivos abiertos en el directorio especificado
