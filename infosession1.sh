@@ -120,22 +120,33 @@ fi
 if [[ -n "$OPCION_U" && -n "$OPCION_D" ]]; then
     # Comprobar si el directorio existe
     if [[ ! -d "$OPCION_D" ]]; then
-        salida_error "Se ha introducido un directorio especificado no existe."
+        salida_error "Se ha introducido un directorio que no existe."
     fi
 
     # Sacar los PID de los procesos que tienen archivos abiertos en el directorio especificado 
     pid_lsof_local=$(lsof +d "$OPCION_D" | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
 
+    #echo "Pid de los procesos que tienen archivos abiertos en el directorio especificado: "
+    #echo $pid_lsof_local
+
     if [[ -z "$pid_lsof_local" ]]; then
         salida_error "Se ha introducido un directorio donde no hay procesos con archivos abiertos"
     fi
 
+    #echo "$tabla_b" | awk '{print $3, $4}' | column -t
+    #echo "$OPCION_U"
+
+
     echo -e "$CABECERA"
     # Filtrar los procesos de un usuario específico que también estén en el directorio especificado
     for i in $pid_lsof_local; do
-        tabla_local=$(echo "$tabla_b" | awk '$3 == '$i' && $4 == '$OPCION_U'')
+        tabla_local=$(echo "$tabla_b" | awk '$3 == '$i' ' | grep "$OPCION_U")
         echo "$tabla_local"
     done | column -t
+
+
+   
+
     exit 0
 fi
 
