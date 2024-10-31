@@ -16,7 +16,7 @@ HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información 
 PROGNAME=$(basename $0)
 #CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
 CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-6s %-6s %-6s %-15s %-8s %-6s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
-#CABECERA2="${TEXT_BLUE}${TEXT_BOLD}SID    GID     %MEM    PID     UID  TTY CMD ${TEXT_RESET}" 
+
 
 
 # Tabla basica 
@@ -67,7 +67,7 @@ ayuda()
 no_option() {
     echo -e "$CABECERA"
     # comprobamos que la PID (col1) no sea 0 y que el usuario (col4) sea bash
-    echo "$tabla_b" | awk '$1 != "0" && $4 = "bash"' 
+    echo "$tabla_b" | awk '$1 != "0" && $4 == "bash"' 
 
     if [[ $? -ne 0 ]]; then
         salida_error "Se ha producido un error al mostrar los procesos del usuario Bash con PID distinto de 0" 
@@ -129,46 +129,18 @@ fi
 
 # Una vez recogidos los filtros que se quiere hacer a la tabla los aplicamos 
 
-# Mostrar los procesos de un directorio en especifico opción -d y un usuario especifico opción -u 
-if [[ -n "$OPCION_U" && -n "$OPCION_D" ]]; then
-    # Comprobar si el directorio existe
-    if [[ ! -d "$OPCION_D" ]]; then
-        salida_error "Se ha producido un error el directorio $OPCION_D no existe."
-    fi
-
-    # Sacar los PID de los procesos que tienen archivos abiertos en el directorio especificado 
-    pid_lsof_local=$(lsof +d "$OPCION_D" | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
-
-    #echo "Pid de los procesos que tienen archivos abiertos en el directorio especificado: "
-    #echo $pid_lsof_local
-
-    if [[ -z "$pid_lsof_local" ]]; then
-        salida_error "Se ha producido un error en el directorio $OPCION_D no hay procesos con archivos abiertos"
-    fi
-
-    #echo "$tabla_b" | awk '{print $3, $4}' | column -t
-    #echo "$OPCION_U"
-
-    echo -e "$CABECERA"
-    # Filtrar los procesos de un usuario específico que también estén en el directorio especificado
-    for i in $pid_lsof_local; do
-        tabla_local=$(echo "$tabla_b" | awk '$3 == '$i'&& $4 == "'$OPCION_U'"')
-        echo "$tabla_local"
-    done 
-
-    exit 0
-fi
+tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 
 
 # Filtrar por usuario (OPCION -u)
 if [[ -n "$OPCION_U" ]]; then  # comprobamos que la variable no esté vacía
-    tabla_u=$(echo "$tabla_b" | awk '$4 == "'$OPCION_U'"')  # filtramos la tabla por el usuario especificado
+    tabla_f=$(echo "$tabla_f" | awk '$4 == "'$OPCION_U'"')  # filtramos la tabla por el usuario especificado
     #Comprobamos que la tabla no esté vacía
-    if [[ -z "$tabla_u" ]]; then
+    if [[ -z "$tabla_f" ]]; then
         salida_error "Se ha producido un error no hay procesos con el usuario $OPCION_U"
     else 
         echo -e "$CABECERA"
-        echo "$tabla_u" 
+        echo "$tabla_f" 
         exit 0
     fi 
 fi
@@ -192,10 +164,14 @@ if [[ -n "$OPCION_D" ]]; then
     echo -e "$CABECERA"
 
     for i in $pid_lsof_local; do
-        tabla_local=$(echo "$tabla_b" | awk '$3 == '$i'')
-        echo "$tabla_local"
+        tabla_local=$(echo "$tabla_f" | awk '$3 == '$i'')
+        # Solo imprimir si tabla_local tiene contenido
+        if [[ -n "$tabla_local" ]]; then
+            echo "$tabla_local"
+        fi
     done 
 
+    tabla_f="$tabla_local"  # Actualizar `tabla_f` con los resultados
     exit 0 
 
 fi
@@ -206,7 +182,6 @@ if [[ "$OPCION_Z" == true ]]; then
     echo "$tabla_b" 
     exit 0
 fi
-
 
 
 exit 0
