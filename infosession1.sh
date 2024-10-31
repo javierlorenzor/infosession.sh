@@ -89,6 +89,7 @@ no_option() {
 OPCION_Z=false
 OPCION_D=""
 OPCION_U=""
+OPCION_M=false
 
 
 # Si no hay opciones, se usa no_option
@@ -130,6 +131,10 @@ else
                 fi
                 exit 0
                 ;;
+            -max) # Modificación
+                OPCION_M=true
+                shift
+                ;;
             *) # Opción no válida
                 salida_error "Se ha producido un error has introducido una opcion que no se reconoce: $1."
                 ;;
@@ -137,7 +142,22 @@ else
     done
 fi
 
+if [[ "$OPCION_M" == true ]]; then
+    #usuario con mas porcentaje de memoria
+    linea_local=$(echo "$tabla_b" | sort -nr -k 6 | head -n 1)
 
+    #pid del usuario con mas porcentaje de memoria
+    pid_local=$(echo "$linea_local" | awk '{print $4}')
+
+    uer_local=$(echo "$linea_local" | awk '{print $1}')
+
+    
+    porcent_local=$(echo "$linea_local" | awk '{print $6}')
+
+    # Mostrar todos los procesos, incluyendo PID 0
+    echo "El usaurio $user_local con pid $pid_local tiene un porcentaje de memoria de $porcent_local"
+    exit 0 
+fi
 
 tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 
