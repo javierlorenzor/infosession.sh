@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Estilos de texto
+#ESTILOS DE TEXTO
 TEXT_BOLD=$(tput bold)
 TEXT_ULINE=$(tput sgr 0 1)
 TEXT_GREEN=$(tput setaf 2)
@@ -10,25 +10,27 @@ TEXT_BLUE=$(tput setaf 4)
 TEXT_YELLOW=$(tput setaf 3)
 TEXT_MAGENTA=$(tput setaf 5)
 
-# Variables de mensajes y cabecera 
+
+# MENSAJES DE ERROR Y AYUDA
 ERROR="${TEXT_YELLOW}${TEXT_BOLD}Deberás consultar -h o --help para más información.${TEXT_RESET}"
 HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos.${TEXT_RESET}"
 PROGNAME=$(basename $0)
-#CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
+
+
+#CABECERAS
 CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-6s %-6s %-6s %-15s %-8s %-6s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
+#CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
 
 
-
-# Tabla basica 
-#tabla_b=$(ps -eo sid,pgid,pid,user:20,tty,%mem,cmd --no-headers --sort=user | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}') 
+#TABLA BAASICA (comando ps basico (unica llamada a ps))
 tabla_b=$(ps -eo sid,pgid,pid,user:15,tty,%mem,cmd --no-headers --sort=user | awk '{printf "%-6s %-6s %-6s %-15s %-8s %-6s %s\n", $1, $2, $3, $4, $5, $6, $7}')
-
+#tabla_b=$(ps -eo sid,pgid,pid,user:20,tty,%mem,cmd --no-headers --sort=user | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}') 
 if [[ $? -ne 0 ]]; then
     salida_error "Se ha producido un error al ejecutar el comando ps."
 fi
 
 
-# comprobar que existen los comandos awk y lsof 
+#COMPROBAR FUNCIONAMIENTO DE LOS COMANDOS LSO Y AWK
 for i in awk lsof ; do 
     which $i > /dev/null
     if [[ $? -ne 0 ]]; then
@@ -36,7 +38,8 @@ for i in awk lsof ; do
     fi 
 done
 
-# Función para manejar errores
+
+#FUNCIÓN PARA MANEJAR ERRORES 
 salida_error() 
 {
     echo "${PROGNAME}: en la línea $LINENO" 1>&2
@@ -48,7 +51,8 @@ salida_error()
     exit 1
 }
 
-# Función de ayuda
+
+#FUNCIÓN PARA MOSTRAR LA AYUDA
 ayuda() 
 {
     echo 
@@ -64,6 +68,8 @@ ayuda()
     echo 
 }
 
+
+#FUNCION PARA CUANDO NO PONES NINGUNA OPCION EN EL SCRIPT
 no_option() {
     echo -e "$CABECERA"
     # comprobamos que la PID (col1) no sea 0 y que el usuario (col4) sea bash
@@ -74,11 +80,12 @@ no_option() {
     fi
 }
 
-# Variables para las opciones
+
+
+#VARIABLES PARA LAS OPCIONES DEL SCRIPT 
 OPCION_Z=false
 OPCION_D=""
 OPCION_U=""
-
 
 
 # Si no hay opciones, se usa no_option
@@ -90,7 +97,7 @@ if [[ $# -eq 0 ]]; then
     fi
     exit 0  # salimos del script porque no hay opciones
 else
-    # Procesar opciones
+    # Procesamos las  opciones
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -z) # Mostrar todos los procesos, incluyendo PID 0
@@ -106,14 +113,14 @@ else
                 fi
                 shift
                 ;;
-            -d) # Filtro por directorio
+            -d) # Filtro por ruta de directorio
                 OPCION_D="$2"
                 if [[ -z "$OPCION_D" || "$OPCION_D" == "-"* ]]; then
                     salida_error "Se ha producido un error se debe inttroducir una ruta a un directprio después de la opción -d."
                 fi
                 shift 2
                 ;;
-            -h|--help) # Mostrar la ayuda
+            -h|--help) # Mostrar la ayuda 
                 ayuda
                 if [[ $? -ne 0 ]]; then
                     salida_error "Se ha producido un error al mostrar la ayuda."
@@ -121,13 +128,13 @@ else
                 exit 0
                 ;;
             *) # Opción no válida
-                salida_error "Se ha introducido una opcion que no se reconoce: $1."
+                salida_error "Se ha producido un error has introducido una opcion que no se reconoce: $1."
                 ;;
         esac
     done
 fi
 
-# Una vez recogidos los filtros que se quiere hacer a la tabla los aplicamos 
+
 
 tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 
@@ -135,20 +142,20 @@ tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 # Filtrar por usuario (OPCION -u)
 if [[ -n "$OPCION_U" ]]; then  # comprobamos que la variable no esté vacía
     tabla_f=$(echo "$tabla_f" | awk '$4 == "'$OPCION_U'"')  # filtramos la tabla por el usuario especificado
-    #Comprobamos que la tabla no esté vacía
+    #Comprobamos que la tabla no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
     if [[ -z "$tabla_f" ]]; then
         salida_error "Se ha producido un error no hay procesos con el usuario $OPCION_U"
     else 
+        #imprimimos la tabla con el usuario especificado
         echo -e "$CABECERA"
         echo "$tabla_f" 
-        exit 0
     fi 
 fi
 
 
 # Filtrar por directorio (OPCION -d)
 if [[ -n "$OPCION_D" ]]; then
-    # Comprobar si el directorio existe
+    # Comprobar si el directorio existe (para ello usamos -d que comprueba si el directorio existe)
     if [[ ! -d "$OPCION_D" ]]; then
         salida_error "Se ha producido un error el directorio $OPCION_D no existe."
     fi 
@@ -156,32 +163,33 @@ if [[ -n "$OPCION_D" ]]; then
     #sacamos los pid de los procesos que tienen archivos abiertos en el directorio especificado (tr para que esten todos en una línea )
     pid_lsof_local=$(lsof +d $OPCION_D | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
 
+    #Comprobamos que la variable no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
     if [[ -z "$pid_lsof_local" ]]; then
         error_exit "Se ha producido un error no hay procesos con archivos abiertos en el directorio $OPCION_D"
     fi
     
     # Filtrar los procesos que tengan archivos abiertos en el directorio especificado
-    echo -e "$CABECERA"
+    echo -e "$CABECERA" # imprimimos la cabecera
 
+    # Recorremos los PID de los procesos que tienen archivos abiertos en el directorio especificado en OPCION_D
     for i in $pid_lsof_local; do
+        #Comprobamos que en la columna 3 (pid) sea igual al pid que hemos sacado con lsof
         tabla_local=$(echo "$tabla_f" | awk '$3 == '$i'')
-        # Solo imprimir si tabla_local tiene contenido
+        # Solo imprimir si tabla_local tiene contenido (para que no imprima líneas vacías)
         if [[ -n "$tabla_local" ]]; then
             echo "$tabla_local"
         fi
     done 
 
-    tabla_f="$tabla_local"  # Actualizar `tabla_f` con los resultados
-    exit 0 
-
+    tabla_f="$tabla_local"  # Actualizar `tabla_f` con los resultados (para poder seguir aplicando filtros)
 fi
 
 # Mostrar todos los procesos, incluyendo PID 0 (OPCION -z)
 if [[ "$OPCION_Z" == true ]]; then
     echo -e "$CABECERA"
-    echo "$tabla_b" 
-    exit 0
+    # Mostrar todos los procesos, incluyendo PID 0
+    echo "$tabla_f" 
 fi
 
-
+#salimos del script
 exit 0
