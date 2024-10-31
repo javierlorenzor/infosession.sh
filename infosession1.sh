@@ -12,10 +12,10 @@ TEXT_MAGENTA=$(tput setaf 5)
 
 
 # MENSAJES DE ERROR Y AYUDA
-ERROR="${TEXT_YELLOW}${TEXT_BOLD}Deberás consultar -h o --help para más información.${TEXT_RESET}"
+ERROR="${TEXT_GREEN}${TEXT_BOLD}Deberás consultar -h o --help para más información.${TEXT_RESET}"
 HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos.${TEXT_RESET}"
 PROGNAME=$(basename $0)
-
+AYUDA_M="${TEXT_RED}${TEXT_BOLD}La tabla es muy pequeña, por favor, consulta la ayuda para más información.${TEXT_RESET}"
 
 #CABECERAS
 CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-6s %-6s %-6s %-15s %-8s %-6s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
@@ -42,9 +42,12 @@ done
 #FUNCIÓN PARA MANEJAR ERRORES 
 salida_error() 
 {
-    echo "${PROGNAME}: en la línea $LINENO" 1>&2
+    echo "${TEXT_RED}${TEXT_BOLD}------------------------------------------------------------------------------------${TEXT_RESET}"
+    echo "${TEXT_RED}${TEXT_BOLD}               Error en la ejecución del archivo ${PROGNAME} ${TEXT_RESET}" 
+    echo "${TEXT_RED}${TEXT_BOLD}------------------------------------------------------------------------------------${TEXT_RESET}"
+    echo "El error esta en la línea $LINENO" 1>&2
     echo 
-    echo "${TEXT_RED}${TEXT_BOLD}$1 ${TEXT_RESET}"
+    echo "${TEXT_YELLOW}${TEXT_BOLD}$1 ${TEXT_RESET}"
     echo 
     echo $ERROR
     echo 
@@ -104,7 +107,7 @@ else
                 OPCION_Z=true
                 shift
                 ;;
-            -u) # Filtro por usuario
+            -u ) # Filtro por usuario
                 shift
                 OPCION_U="$1"
                 #comprobamos que la opción no este vacía o que se haya introducido despues otra opcion sin poner un usuario
@@ -189,6 +192,11 @@ if [[ "$OPCION_Z" == true ]]; then
     echo -e "$CABECERA"
     # Mostrar todos los procesos, incluyendo PID 0
     echo "$tabla_f" 
+fi
+
+tamano=$(echo "$tabla_f" | wc -l)  # Contar el número de líneas de la tabla
+if [[ $tamano -lt 5 ]]; then
+    echo "$AYUDA_M"
 fi
 
 #salimos del script
