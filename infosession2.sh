@@ -20,6 +20,7 @@ PROGNAME=$(basename $0)
 #CABECERAS
 CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-6s %-6s %-6s %-15s %-8s %-6s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
 #CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
+CABECERA2="$(printf "${TEXT_MAGENTA}${TEXT_BOLD}%-5s %-10s %-10s %-10s %-15s %-10s %-10s${TEXT_RESET}\n" "SID" "TOT_PGID" "%MEM_TOT" "PID_LEAD" "US_LEAD" "CON_TTY" "CMD_LEAD")"
 
 
 #TABLA BASICA (comando ps basico (unica llamada a ps))
@@ -65,8 +66,13 @@ ayuda()
     echo
     echo "${TEXT_MAGENTA}${TEXT_BOLD}Las opciones son:${TEXT_RESET}"
     echo "-z:               La tabla muestra también los procesos cuyo identificador sea 0."
-    echo "-u [usuario]:     Muestra los procesos cuyo usuario efectivo sea el especificado."
+    echo "-u [usuarios]:     Muestra los procesos cuyo usuario efectivo sea el especificado.(se pued introducir uno o avrios)"
     echo "-d [ruta]:        Muestra solo los procesos que tengan archivos abiertos en el directorio especificado."
+    echo "-t:               Muestra solo los procesos que tengan una terminal controladora asociada."
+    echo "-e:               Muestra una tabla de sesiones."
+    echo "-sm:              Ordena la tabla por % de memoria.(opcion valida con -e o sin -e)"
+    echo "-sg:              Ordena la tabla por número de procesos.(esta opcion no es valida con -sm o sin el uso de -e)"
+    echo "-r:               Muestra la tabla en orden inverso."
     echo "-h|--help:        Muestra esta ayuda."
     echo 
 }
@@ -90,6 +96,10 @@ OPCION_Z=false
 OPCION_D=""
 OPCION_U=""
 OPCION_T=false
+OPCION_E=false
+OPCION_SM=false
+OPCION_SG=false
+OPCION_R=false
 
 
 # Si no hay opciones, se usa no_option
@@ -128,8 +138,20 @@ else
                 OPCION_T=true
                 shift
                 ;;
-            -e) # Tabla de sesiones
+            -e) # FIltro para Tabla de sesiones
                 OPCION_E=true
+                shift
+                ;;
+            -sm) #Filtro para ordenar por memoria
+                OPCION_SM=true
+                shift
+                ;;
+            -sg) #Filtro para ordenar por num de procesos
+                OPCION_SG=true
+                shift
+                ;;
+            -r) # Filtro para ordenar en orden inverso
+                OPCION_R=true
                 shift
                 ;;
             -h|--help) # Mostrar la ayuda 
@@ -156,7 +178,6 @@ if [[ "$OPCION_E" == true ]]; then
     SID=$(echo "$tabla_f" | awk '{print $1}' | sort -n | uniq) # sesiones diferenntes 
 
 
-    
     for i in $SID; do
         # Número de grupos de procesos diferentes por sesión
         PGID=$(echo "$tabla_f" | awk '$1 == '"$i"' {print $2}' | sort -u | wc -l)
@@ -165,15 +186,47 @@ if [[ "$OPCION_E" == true ]]; then
         MEM=$(echo "$tabla_f" | awk '$1 == '"$i"' {sum+=$6} END {print sum "%"}')
     
         # PID líder de la sesión
-        PID=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $3; exit}')
-        printf "%-6s %-6s %-6s %-15s\n" "$i" "$PGID" "$MEM" "$PID"
+        PID=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $3}')
+
+        #Usuario efectivo de la sesión
+        USER=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $4}')
+
+        #Terminal del proceso lider de la sesión
+        TERMINAL=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $5}')
+
+        #Comando del proceso lider de la sesión
+        PROCESO=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $7}')
+
+       #Guardamos la información recogida en una variable para despues imprimirla 
+        tabla_sesion+=$(printf "%-5s %-10s %-10s %-10s %-15s %-10s %-10s %s" "$i" "$PGID" "$MEM" "$PID" "$USER" "$TERMINAL" "$PROCESO" "\n")
 
     done
 
+    # ordenar tabla por usuario (columna 5)
+    tabla_sesion=$(echo -e "$tabla_sesion" | sort  -k 5) 
 
-
-        exit 0
 fi 
+
+#Ordenar por memoria (OPCION -sm)
+if [[ "$OPCION_SM" == true ]]; then
+
+    if [[ "$OPCION_E" == true ]]; then
+        tabla_sesion=$(echo -e "$tabla_sesion"| sort -n -k 3)
+    else
+        tabla_f=$(echo "$tabla_f" | sort -n -k 6)
+    fi
+fi
+
+#Ordenar por numero de procesos (OPCION -sg)
+if [[ "$OPCION_SG" == true ]]; then
+    if [[ "$OPCION_SM" == true  ]]; then
+        error_exit "Se ha producido un error no se puede ordenar por memoria (-sm) y por numero de procesos(-sg) a la vez."
+    elif [[ "$OPCION_E" == false ]]; then
+        error_exit "Se ha producido un error no se puede usar la opcion (-sg) y sin la opcion (-e) "
+    else
+        tabla_f=$(echo "$tabla_f" | sort -n -k 2)
+    fi
+fi
 
 # Filtrar por usuario (OPCION -u)
 if [[ -n "$OPCION_U" ]]; then  # comprobamos que la variable no esté vacía
@@ -223,8 +276,19 @@ if [[ "$OPCION_T" == true ]]; then
     tabla_f=$(echo "$tabla_f" | awk '$5 != "?"')
 fi
 
-echo -e "$CABECERA"
-echo "$tabla_f" 
+#Ordenar en orden inverso (OPCION -r)
+
+
+#MOSTRAR LA TABLA 
+if [[ "$OPCION_E" == true ]]; then
+    echo -e "$CABECERA2"
+    echo -e "$tabla_sesion"
+    exit 0
+else 
+    echo -e "$CABECERA"
+    echo "$tabla_f"
+    exit 0
+fi
 
 #salimos del script
 exit 0
