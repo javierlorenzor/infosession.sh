@@ -13,14 +13,14 @@ TEXT_MAGENTA=$(tput setaf 5)
 
 # MENSAJES DE ERROR Y AYUDA
 ERROR="${TEXT_GREEN}${TEXT_BOLD}Deberás consultar -h o --help para más información.${TEXT_RESET}"
-HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos.${TEXT_RESET}"
+HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos del usuario: $USER .${TEXT_RESET}"
 PROGNAME=$(basename $0)
 
 
 #CABECERAS
 CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-6s %-6s %-6s %-15s %-8s %-6s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
 #CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
-CABECERA2="$(printf "${TEXT_MAGENTA}${TEXT_BOLD}%-5s %-10s %-10s %-10s %-15s %-10s %-10s${TEXT_RESET}\n" "SID" "TOT_PGID" "%MEM_TOT" "PID_LEAD" "US_LEAD" "CON_TTY" "CMD_LEAD")"
+CABECERA2="$(printf "${TEXT_MAGENTA}${TEXT_BOLD}%-5s %-10s %-10s %-10s %-15s %-10s %-10s %s${TEXT_RESET}\n" "SID" "TOT_PGID" "%MEM_TOT" "PID_LEAD" "US_LEAD" "CON_TTY" "CMD_LEAD")"
 
 
 #TABLA BASICA (comando ps basico (unica llamada a ps))
@@ -220,9 +220,9 @@ fi
 #Ordenar por numero de procesos (OPCION -sg)
 if [[ "$OPCION_SG" == true ]]; then
     if [[ "$OPCION_SM" == true  ]]; then
-        error_exit "Se ha producido un error no se puede ordenar por memoria (-sm) y por numero de procesos(-sg) a la vez."
+        salida_error "Se ha producido un error no se puede ordenar por memoria (-sm) y por numero de procesos(-sg) a la vez."
     elif [[ "$OPCION_E" == false ]]; then
-        error_exit "Se ha producido un error no se puede usar la opcion (-sg) y sin la opcion (-e) "
+        salida_error "Se ha producido un error no se puede usar la opcion (-sg) y sin la opcion (-e) "
     else
         tabla_f=$(echo "$tabla_f" | sort -n -k 2)
     fi
@@ -281,12 +281,33 @@ fi
 
 #MOSTRAR LA TABLA 
 if [[ "$OPCION_E" == true ]]; then
-    echo -e "$CABECERA2"
-    echo -e "$tabla_sesion"
+ 
+    if [[ -z "$tabla_sesion" ]]; then
+        echo 
+        echo "${TEXT_YELLOW}${TEXT_BOLD}NO SE HAN ENCONTRADO RESULTADOS A TU BUESQUEDA PRUEBA OTRA COMBINACION DE OPCIONES.${TEXT_RESET}"
+        ayuda
+
+    else
+        echo -e "$CABECERA2"
+        echo "$tabla_sesion"
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al mostrar la tabla de sesiones."
+        fi
+    fi
     exit 0
 else 
-    echo -e "$CABECERA"
-    echo "$tabla_f"
+
+    if [[ -z "$tabla_f" ]]; then
+        echo
+        echo "${TEXT_YELLOW}${TEXT_BOLD}NO SE HAN ENCONTRADO RESULTADOS A TU BUESQUEDA PRUEBA OTRA COMBINACION DE OPCIONES.${TEXT_RESET}"
+        ayuda
+    else
+        echo -e "$CABECERA"
+        echo "$tabla_f"
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al mostrar la tabla de procesos."
+        fi
+    fi
     exit 0
 fi
 
