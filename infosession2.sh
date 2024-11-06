@@ -79,7 +79,8 @@ ayuda()
 
 
 #FUNCION PARA CUANDO NO PONES NINGUNA OPCION EN EL SCRIPT
-no_option() {
+no_option() 
+{
     echo -e "$CABECERA"
     # comprobamos que la PID (col1) no sea 0 y que el usuario (col4) sea bash
     echo "$tabla_b" | awk '$1 != "0" && $4 == "bash"' 
@@ -93,13 +94,17 @@ no_option() {
 
 #VARIABLES PARA LAS OPCIONES DEL SCRIPT 
 OPCION_Z=false
-OPCION_D=""
-OPCION_U=""
+OPCION_D=false
+DIRECTORIO=""
+OPCION_U=false 
+USUARIOS=""
+OP_VALIDAS="-z -d -t -e -sm -sg -r"
 OPCION_T=false
 OPCION_E=false
 OPCION_SM=false
 OPCION_SG=false
 OPCION_R=false
+REVERSE=""
 
 
 # Si no hay opciones, se usa no_option
@@ -121,11 +126,13 @@ else
             -u ) # Filtro por usuario
                 shift
                 OPCION_U="$1"
-                #comprobamos que la opción no este vacía o que se haya introducido despues otra opcion sin poner un usuario
+                comprobamos que la opción no este vacía o que se haya introducido despues otra opcion sin poner un usuario
                 if [[ -z "$1" || "$1" == "-"* ]]; then
                     salida_error "Se ha producido un error se debe especificar un usuario después de la opción -u."
                 fi
                 shift
+
+
                 ;;
             -d) # Filtro por ruta de directorio
                 OPCION_D="$2"
@@ -203,7 +210,8 @@ if [[ "$OPCION_E" == true ]]; then
     done
 
     # ordenar tabla por usuario (columna 5)
-    tabla_sesion=$(echo -e "$tabla_sesion" | sort  -k 5) 
+    #tabla_sesion=$(echo -e "$tabla_sesion" | sort -d -k 5 --debug -b | REVERSE) 
+    tabla_sesion=$(echo -e "$tabla_sesion" | sort -d -k 5 -b | REVERSE) 
 
 fi 
 
@@ -213,9 +221,10 @@ if [[ "$OPCION_SM" == true ]]; then
     if [[ "$OPCION_E" == true ]]; then
         tabla_sesion=$(echo -e "$tabla_sesion"| sort -n -k 3)
     else
-        tabla_f=$(echo "$tabla_f" | sort -n -k 6)
+        tabla_f=$(echo "$tabla_f" | sort -n -k 6| REVERSE)
     fi
 fi
+
 
 #Ordenar por numero de procesos (OPCION -sg)
 if [[ "$OPCION_SG" == true ]]; then
@@ -228,13 +237,30 @@ if [[ "$OPCION_SG" == true ]]; then
     fi
 fi
 
-# Filtrar por usuario (OPCION -u)
-if [[ -n "$OPCION_U" ]]; then  # comprobamos que la variable no esté vacía
-    tabla_f=$(echo "$tabla_f" | awk '$4 == "'$OPCION_U'"')  # filtramos la tabla por el usuario especificado
+
+# Filtrar por usuario (OPCION -u)(para un solo usuario)
+#if [[ -n "$OPCION_U" ]]; then  # comprobamos que la variable no esté vacía
+    #tabla_f=$(echo "$tabla_f" | awk '$4 == "'$OPCION_U'"')  # filtramos la tabla por el usuario especificado
     #Comprobamos que la tabla no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
-    if [[ -z "$tabla_f" ]]; then
-        salida_error "Se ha producido un error no hay procesos con el usuario $OPCION_U"
-    fi 
+    #if [[ -z "$tabla_f" ]]; then
+        #salida_error "Se ha producido un error no hay procesos con el usuario $OPCION_U"
+    #fi 
+#fi
+
+# Filtrar por usuario (OPCION -u)(para varios  usuarios)
+if [[ OPCION_U == true ]]; then
+    for i in $USUARIOS; do
+        if [[ OPCION_E == true ]]; then
+            tabla_sesion=$(echo "$tabla_sesion" | awk '$5 == "'$i'"')
+        else 
+            tabla_f=$(echo "$tabla_f" | awk '$4 == "'$i'"')
+        fi
+
+        #Comprobamos que la tabla no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
+        if [[ -z "$tabla_f" || -z "$tabla_sesion" ]]; then
+            salida_error "Se ha producido un error no hay procesos con el usuario $i"
+        fi
+    done
 fi
 
 
@@ -277,9 +303,13 @@ if [[ "$OPCION_T" == true ]]; then
 fi
 
 #Ordenar en orden inverso (OPCION -r)
+if [[ "$OPCION_R" == true ]]; then
+    REVERSE="-r"
+else
+    REVERSE=""
+fi
 
-
-#MOSTRAR LA TABLA 
+#MOSTRAR LA TABLA (Si hay resultados)
 if [[ "$OPCION_E" == true ]]; then
  
     if [[ -z "$tabla_sesion" ]]; then

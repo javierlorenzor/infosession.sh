@@ -75,9 +75,9 @@ ayuda()
 #FUNCION PARA CUANDO NO PONES NINGUNA OPCION EN EL SCRIPT
 no_option() {
     echo -e "$CABECERA"
-    # comprobamos que la PID (col1) no sea 0 y que el usuario (col4) sea bash
-    echo "$tabla_b" | awk '$1 != "0" && $4 == "bash"' 
-
+    # comprobamos que la PID (col1) no sea 0 y que el usuario (col4) sea el usuario actual
+    actual_user=$(echo "$USER") # usaurio actual de bash usuario que está ejecutando el script vamos $USER , tambien se podría hacer con whoami
+    echo "$tabla_b" | awk '$1 != "0" && $4 == "'"$actual_user"'"' | sort -k 4 -b 
     if [[ $? -ne 0 ]]; then
         salida_error "Se ha producido un error al mostrar los procesos del usuario Bash con PID distinto de 0" 
     fi
@@ -192,18 +192,19 @@ if [[ -n "$OPCION_D" ]]; then
     fi
     
     # Filtrar los procesos que tengan archivos abiertos en el directorio especificado
-    echo -e "$CABECERA" # imprimimos la cabecera
+    #echo -e "$CABECERA" # imprimimos la cabecera
 
     # Recorremos los PID de los procesos que tienen archivos abiertos en el directorio especificado en OPCION_D
     for i in $pid_lsof_local; do
         #Comprobamos que en la columna 3 (pid) sea igual al pid que hemos sacado con lsof
         tabla_local=$(echo "$tabla_f" | awk '$3 == '$i'')
         # Solo imprimir si tabla_local tiene contenido (para que no imprima líneas vacías)
-        if [[ -n "$tabla_local" ]]; then
-            echo "$tabla_local"
-        fi
+        #if [[ -n "$tabla_local" ]]; then
+            #echo "$tabla_local"
+        #fi
+        #echo "$tabla_local"
     done 
-
+    #echo "$tabla_local"
     tabla_f="$tabla_local"  # Actualizar `tabla_f` con los resultados (para poder seguir aplicando filtros)
 fi
 
