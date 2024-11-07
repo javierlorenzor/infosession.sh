@@ -18,13 +18,13 @@ PROGNAME=$(basename $0)
 
 
 #CABECERAS
-CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-6s %-6s %-6s %-15s %-8s %-6s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
+CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-8s %-8s %-8s %-15s %-8s %-8s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
 #CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
 CABECERA2="$(printf "${TEXT_MAGENTA}${TEXT_BOLD}%-5s %-10s %-10s %-10s %-15s %-10s %-10s %s${TEXT_RESET}\n" "SID" "TOT_PGID" "%MEM_TOT" "PID_LEAD" "US_LEAD" "CON_TTY" "CMD_LEAD")"
 
 
 #TABLA BASICA (comando ps basico (unica llamada a ps))
-tabla_b=$(ps -eo sid,pgid,pid,user:15,tty,%mem,cmd --no-headers --sort=user | awk '{printf "%-6s %-6s %-6s %-15s %-8s %-6s %s\n", $1, $2, $3, $4, $5, $6, $7}')
+tabla_b=$(ps -eo sid,pgid,pid,user:15,tty,%mem,cmd --no-headers --sort=user | awk '{printf "%-8s %-8s %-8s %-15s %-8s %-8s %s\n", $1, $2, $3, $4, $5, $6, $7}')
 #tabla_b=$(ps -eo sid,pgid,pid,user:20,tty,%mem,cmd --no-headers --sort=user | awk '{print $1, $2, $3, $4, $5, $6, $7, $8}') 
 if [[ $? -ne 0 ]]; then
     salida_error "Se ha producido un error al ejecutar el comando ps."
@@ -46,7 +46,6 @@ salida_error()
     echo "${TEXT_RED}${TEXT_BOLD}------------------------------------------------------------------------------------${TEXT_RESET}"
     echo "${TEXT_RED}${TEXT_BOLD}               Error en la ejecución del archivo ${PROGNAME} ${TEXT_RESET}" 
     echo "${TEXT_RED}${TEXT_BOLD}------------------------------------------------------------------------------------${TEXT_RESET}"
-    echo "El error esta en la línea $LINENO" 1>&2
     echo 
     echo "${TEXT_YELLOW}${TEXT_BOLD}$1 ${TEXT_RESET}"
     echo 
@@ -205,7 +204,13 @@ if [[ "$OPCION_U" == true ]]; then
     for i in $USUARIOS; do
         #echo "$i"
         tabla_u=$(echo "$tabla_f" | awk '$4 == "'$i'"')
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error en el bucle for de la opción -u."
+        fi
         tabla_loc+="$tabla_u"
+        if [[ -z "$tabla_loc" ]]; then
+            salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
+        fi
     done
    
     tabla_f=$(echo "$tabla_loc" | sort -k4 -b $REVERSE)
@@ -257,47 +262,75 @@ if [[ "$OPCION_D" == true ]]; then
     #echo "$tabla_d"
     #echo "$tabla_local"
     tabla_f=$(echo "$tabla_d" | sort -k4 -b $REVERSE)  
+    if [[ $? -ne 0 ]]; then
+        salida_error "Se ha producido un error no hay procesos con archivos abiertos en el directorio $DIR"
+    fi
 fi
 
 
 #Filtrar por terminal (OPCION -t)
 if [[ "$OPCION_T" == true ]]; then
     tabla_f=$(echo "$tabla_f" | awk '$5 != "?"' ) 
+    if [[ $? -ne 0 ]]; then
+        salida_error "Se ha producido un error al filtrar por terminal."
+    fi
 fi
 
 
+#Funcion para la tabla de sesiones
 if [[ "$OPCION_E" == false  ]]; then
 
     SID=$(echo "$tabla_f" | awk '{print $1}' | sort -n | uniq) # sesiones diferenntes 
+    #echo $SID
+    if [[ $? -ne 0 ]]; then
+        salida_error "Se ha producido un error al buscar los SID."
+    fi
 
 
     for i in $SID; do
         # Número de grupos de procesos diferentes por sesión
         PGID=$(echo "$tabla_f" | awk '$1 == '"$i"' {print $2}' | sort -u | wc -l)
-    
+        #echo $PGID
+
         # Total del % de memoria por sesión
-        MEM=$(echo "$tabla_f" | awk '$1 == '"$i"' {sum+=$6} END {print sum "%"}')
-    
+        MEM=$(echo "$tabla_f" | awk '$1 == '"$i"' {sum+=$6} END {print sum " %"}')
+        #echo $MEM
+
         # PID líder de la sesión
         PID=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $3}')
+        #echo $PID
 
         #Usuario efectivo de la sesión
         USER=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $4}')
+        #echo $USER
 
         #Terminal del proceso lider de la sesión
         TERMINAL=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $5}')
+        #echo $TERMINAL
 
         #Comando del proceso lider de la sesión
         PROCESO=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $7}')
+        #echo $PROCESO
+
+        #comprobamos que ninguno de los campos esté vacío si esta vacío ponemos ?
+        for j in $PGID $MEM $PID $USER $TERMINAL $PROCESO; do
+            if [[ -z "$j" ]]; then
+                j="?"
+            fi
+        done
 
        #Guardamos la información recogida en una variable para despues imprimirla 
         tabla_sesion+=$(printf "%-5s %-10s %-10s %-10s %-15s %-10s %-10s %s" "$i" "$PGID" "$MEM" "$PID" "$USER" "$TERMINAL" "$PROCESO" "\n")
 
     done
 
-    # ordenar tabla por usuario (columna 5)
+    if [[ $? -ne 0 ]]; then
+        salida_error "Se ha producido un error al crear la tabla de sesiones."
+    fi
+
+    # ordenar tabla por usuario (columna 5) (se usa -b para ignorar los espacios en blanco ya que dan problemas por el printf)
     #tabla_sesion=$(echo -e "$tabla_sesion" | sort -d -k 5 --debug -b | REVERSE) 
-    tabla_sesion=$(echo -e "$tabla_sesion" | sort -d -k 5 -b $REVERSE) 
+    tabla_sesion=$(echo -e "$tabla_sesion" | sed '/^ *$/d' | sort -d -k 5 -b $REVERSE)  # sed es para eliminar una línea vacía que se creaba
 
 fi 
 
@@ -306,9 +339,15 @@ fi
 if [[ "$OPCION_SM" == true ]]; then
 
     if [[ "$OPCION_E" == true ]]; then
-        tabla_f=$(echo "$tabla_f" | sort -n -k 6 $REVERSE)
+        tabla_f=$(echo "$tabla_f" | sort -g -k 6 -b $REVERSE)
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al ordenar la tabla de procesos por memoria."
+        fi
     else
-        tabla_sesion=$(echo -e "$tabla_sesion" | sort -n -k 3 $REVERSE)
+        tabla_sesion=$(echo -e "$tabla_sesion" | sort -g -k 3 -b  $REVERSE)
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al ordenar la tabla de sesiones por memoria."
+        fi
         
     fi
 fi
@@ -319,9 +358,12 @@ if [[ "$OPCION_SG" == true ]]; then
     if [[ "$OPCION_SM" == true  ]]; then
         salida_error "Se ha producido un error no se puede ordenar por memoria (-sm) y por numero de procesos(-sg) a la vez."
     elif [[ "$OPCION_E" == true ]]; then
-        salida_error "Se ha producido un error no se puede usar la opcion (-sg) y sin la opcion (-e) "
+        salida_error "Se ha producido un error no se puede usar la opcion (-sg) y con la opcion (-e) "
     else
         tabla_f=$(echo "$tabla_f" | sort -n -k 2 $REVERSE)
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al ordenar la tabla de sesiones por numero de procesos."
+        fi
     fi
 fi
 
