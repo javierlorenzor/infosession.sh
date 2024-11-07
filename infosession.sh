@@ -296,28 +296,34 @@ if [[ "$OPCION_E" == false  ]]; then
         MEM=$(echo "$tabla_f" | awk '$1 == '"$i"' {sum+=$6} END {print sum " %"}')
         #echo $MEM
 
-        # PID líder de la sesión
+        # PID del proceso líder de la sesión
         PID=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $3}')
-        #echo $PID
+         #echo $PID
+        if [ -z "$PID" ]; then
+            PID="?"
+            USER="?"
+            TERMINAL="?"
+            PROCESO="?"
+        else
+            #Usuario efectivo de la sesión
+            USER=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $4}')
+            #echo $USER
 
-        #Usuario efectivo de la sesión
-        USER=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $4}')
-        #echo $USER
+            #Terminal del proceso lider de la sesión
+            TERMINAL=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $5}')
+            #echo $TERMINAL
 
-        #Terminal del proceso lider de la sesión
-        TERMINAL=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $5}')
-        #echo $TERMINAL
-
-        #Comando del proceso lider de la sesión
-        PROCESO=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $7}')
-        #echo $PROCESO
-
+            #Comando del proceso lider de la sesión
+            PROCESO=$(echo "$tabla_f" | awk '$1 == '"$i"' && $3 == '"$i"' {print $7}')
+            #echo $PROCESO
+        fi
+    
         #comprobamos que ninguno de los campos esté vacío si esta vacío ponemos ?
-        for j in $PGID $MEM $PID $USER $TERMINAL $PROCESO; do
-            if [[ -z "$j" ]]; then
-                j="?"
-            fi
-        done
+        #for j in $PGID $MEM $PID $USER $TERMINAL $PROCESO; do
+            #if [[ -z "$j" ]]; then
+                #j="?"
+            #fi
+        #done
 
        #Guardamos la información recogida en una variable para despues imprimirla 
         tabla_sesion+=$(printf "%-5s %-10s %-10s %-10s %-15s %-10s %-10s %s" "$i" "$PGID" "$MEM" "$PID" "$USER" "$TERMINAL" "$PROCESO" "\n")
