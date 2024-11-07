@@ -85,7 +85,7 @@ no_option() {
     echo -e "$CABECERA"
     # comprobamos que la PID (col1) no sea 0 y que el usuario (col4) sea el usuario actual
     actual_user=$(echo "$USER") # usaurio actual de bash usuario que está ejecutando el script vamos $USER , tambien se podría hacer con whoami
-    echo "$tabla_b" | awk '$1 != "0" && $4 == "'"$actual_user"'"' | sort -k 4 -b 
+    echo "$tabla_b" | awk '$1 != "0" && $4 == "'"$actual_user"'"' | sort -k 4 -b $REVERSE
     if [[ $? -ne 0 ]]; then
         salida_error "Se ha producido un error al mostrar los procesos del usuario actual con PID distinto de 0" 
     fi
@@ -102,7 +102,8 @@ OPCION_T=false
 OPCION_E=false
 OPCION_SM=false
 OPCION_SG=false
-OPCION_R=""
+OPCION_R=false
+REVERSE=""
 
 
 if [[ $# -eq 0 ]]; then
@@ -162,7 +163,13 @@ else
                 shift
                 ;;
             -r) # Filtro para ordenar en orden inverso
-                OPCION_R= "-r"
+                OPCION_R=true 
+                #Ordenar de forma inversa (OPCION -r)
+                if [[ "$OPCION_R" == true ]]; then
+                    REVERSE="-r"  
+                else
+                    REVERSE=""
+                fi
                 shift
                 ;;
             -h|--help) # Mostrar la ayuda 
@@ -191,6 +198,7 @@ tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
     #fi 
 #fi
 
+
 #Filtrar por usuario (OPCION -u)(para varios usuarios)
 if [[ "$OPCION_U" == true ]]; then 
     #echo "$USUARIOS"
@@ -210,6 +218,17 @@ if [[ "$OPCION_U" == true ]]; then
         salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
     fi
 fi 
+
+
+# Mostrar todos los procesos, incluyendo PID 0 (OPCION -z)
+if [[ "$OPCION_Z" == true ]]; then
+    #echo "$REVERSE"
+    tabla_f=$(echo "$tabla_f" | sort -k 4 -b $REVERSE)
+    if [[ $? -ne 0 ]]; then
+        salida_error "Se ha producido un error al realizar la opcion -z"
+    fi
+fi
+
 
 # Filtrar por directorio (OPCION -d)
 if [[ "$OPCION_D" == true ]]; then
@@ -240,10 +259,12 @@ if [[ "$OPCION_D" == true ]]; then
     tabla_f=$(echo "$tabla_d" | sort -k4 -b $REVERSE)  
 fi
 
+
 #Filtrar por terminal (OPCION -t)
 if [[ "$OPCION_T" == true ]]; then
     tabla_f=$(echo "$tabla_f" | awk '$5 != "?"' ) 
 fi
+
 
 if [[ "$OPCION_E" == false  ]]; then
 
@@ -303,14 +324,6 @@ if [[ "$OPCION_SG" == true ]]; then
         tabla_f=$(echo "$tabla_f" | sort -n -k 2 $REVERSE)
     fi
 fi
-
-
-#Ordenar de forma inversa (OPCION -r)
-#if [[ "$OPCION_R" == true ]]; then
-    #REVERSE="-r"
-#else
-    #REVERSE=""
-#fi
 
 
 #MOSTRAR LAS TABLAS DE PROCESOS Y SESIONES
