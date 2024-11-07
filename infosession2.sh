@@ -202,19 +202,6 @@ fi
 
 tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 
-#modificacion 
-if [[ "$OPCION_TOT" == true ]]; then
-    if [[ "$OPCION_E" == true ]]; then
-        salida_error "Se ha producido un error no se puede usar la opcion (-tot) y con la opcion (-e) "
-    else
-        echo -e "$CABECERA2"
-        echo "$tabla_sesion"
-        #tot_s=$(echo "$tabla_sesion" | )
-        #tot_g=$(echo "$tabla_sesion" | )
-        echo "El total de grupos es $tot_g y el total de sesiones es $tot_s"
-        exit 0
-    fi
-fi    
 
 
 #Filtrar por usuario (OPCION -u)(para un solo usuario)
@@ -362,6 +349,23 @@ if [[ "$OPCION_E" == false  ]]; then
     tabla_sesion=$(echo -e "$tabla_sesion" | sed '/^ *$/d' | sort -d -k 5 -b $REVERSE)  # sed es para eliminar una línea vacía que se creaba
 
 fi 
+
+#modificacion 
+if [[ "$OPCION_TOT" == true ]]; then
+    if [[ "$OPCION_E" == true ]]; then
+        salida_error "Se ha producido un error no se puede usar la opcion (-tot) y con la opcion (-e) "
+    else
+        echo -e "$CABECERA2"
+        echo -e "$tabla_sesion"
+        tot_s=$(echo -e "$tabla_sesion" | awk '{sum+=$3} END {print sum }' )
+        #echo "$tot_s"
+        tot_g=$(echo "$tabla_sesion" | awk '{sum1+=$2} END {print sum1 }'  )
+        #echo "$tot_g"
+        echo 
+        echo "El total de grupos es $tot_g y el total de sesiones es $tot_s"
+        exit 0
+    fi
+fi    
 
 
 #Ordenar por memoria (OPCION -sm)
