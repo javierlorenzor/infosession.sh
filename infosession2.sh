@@ -350,7 +350,7 @@ if [[ "$OPCION_E" == false  ]]; then
 
 fi 
 
-#modificacion 
+##############################################################################MODIFICACION##########################################################################################
 if [[ "$OPCION_TOT" == true ]]; then
     if [[ "$OPCION_E" == true ]]; then
         salida_error "Se ha producido un error no se puede usar la opcion (-tot) y con la opcion (-e) "
@@ -366,7 +366,7 @@ if [[ "$OPCION_TOT" == true ]]; then
         exit 0
     fi
 fi    
-
+##############################################################################MODIFICACION##########################################################################################
 
 #Ordenar por memoria (OPCION -sm)
 if [[ "$OPCION_SM" == true ]]; then
