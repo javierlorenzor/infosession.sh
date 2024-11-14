@@ -13,7 +13,7 @@ TEXT_MAGENTA=$(tput setaf 5)
 
 # MENSAJES DE ERROR Y AYUDA
 ERROR="${TEXT_GREEN}${TEXT_BOLD}Deberás consultar -h o --help para más información.${TEXT_RESET}"
-HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos del usuario: $USER .${TEXT_RESET}"
+HELP="${TEXT_GREEN}${TEXT_BOLD}Este programa muestra una tabla con información sobre los procesos y sesiones del usuario: $USER .${TEXT_RESET}"
 PROGNAME=$(basename $0)
 
 
@@ -21,7 +21,7 @@ PROGNAME=$(basename $0)
 CABECERA="$(printf "${TEXT_GREEN}${TEXT_BOLD}%-8s %-8s %-8s %-15s %-8s %-8s %s${TEXT_RESET}\n" "SID" "PGID" "PID" "USER" "TTY" "%MEM" "CMD")"
 #CABECERA="${TEXT_GREEN}${TEXT_BOLD}SID  PGID    PID    USER    TTY   %MEM  CMD${TEXT_RESET}"
 CABECERA2="$(printf "${TEXT_MAGENTA}${TEXT_BOLD}%-5s %-10s %-10s %-10s %-15s %-10s %-10s %s${TEXT_RESET}\n" "SID" "TOT_PGID" "%MEM_TOT" "PID_LEAD" "US_LEAD" "CON_TTY" "CMD_LEAD")"
-
+#si queremos alinear la tabla a la derecha simplemente quitamos el - antes de la s en el printf
 
 #TABLA BASICA (comando ps basico (unica llamada a ps))
 tabla_b=$(ps -eo sid,pgid,pid,user:15,tty,%mem,cmd --no-headers --sort=user | awk '{printf "%-8s %-8s %-8s %-15s %-8s %-8s %s\n", $1, $2, $3, $4, $5, $6, $7}')
@@ -61,18 +61,18 @@ ayuda()
     echo 
     echo $HELP
     echo
-    echo "${TEXT_BOLD}Uso: ./infosesion.sh [opciones]${TEXT_RESET}"
+    echo "${TEXT_BOLD}${TEXT_BLUE}Uso: $PROGNAME [opciones]${TEXT_RESET}"
     echo
-    echo "${TEXT_MAGENTA}${TEXT_BOLD}Las opciones son:${TEXT_RESET}"
-    echo "-z:               La tabla muestra también los procesos cuyo identificador sea 0."
-    echo "-u [usuarios]:     Muestra los procesos cuyo usuario efectivo sea el especificado.(se pued introducir uno o avrios)"
-    echo "-d [ruta]:        Muestra solo los procesos que tengan archivos abiertos en el directorio especificado."
-    echo "-t:               Muestra solo los procesos que tengan una terminal controladora asociada."
-    echo "-e:               Muestra una tabla de sesiones."
-    echo "-sm:              Ordena la tabla por % de memoria.(opcion valida con -e o sin -e)"
-    echo "-sg:              Ordena la tabla por número de procesos.(esta opcion no es valida con -sm o sin el uso de -e)"
-    echo "-r:               Muestra la tabla en orden inverso."
-    echo "-h|--help:        Muestra esta ayuda."
+    echo "${TEXT_MAGENTA}${TEXT_BOLD}Las opciones posibles son con cualquier orden son:${TEXT_RESET}"
+    echo "${TEXT_BOLD}-z:${TEXT_RESET}               La tabla muestra también los procesos cuyo identificador sea 0."
+    echo "${TEXT_BOLD}-u [usuarios]:${TEXT_RESET}    Muestra los procesos cuyo usuario efectivo sea el especificado.(se pued introducir uno o avrios)"
+    echo "${TEXT_BOLD}-d [ruta]:${TEXT_RESET}        Muestra solo los procesos que tengan archivos abiertos en el directorio especificado."
+    echo "${TEXT_BOLD}-t:${TEXT_RESET}               Muestra solo los procesos que tengan una terminal controladora asociada."
+    echo "${TEXT_BOLD}-e:${TEXT_RESET}               Muestra una tabla de sesiones."
+    echo "${TEXT_BOLD}-sm:${TEXT_RESET}              Ordena la tabla por % de memoria.(opcion valida con -e o sin -e)"
+    echo "${TEXT_BOLD}-sg:${TEXT_RESET}              Ordena la tabla por número de procesos.(esta opcion no es valida con -sm o sin el uso de -e)"
+    echo "${TEXT_BOLD}-r:${TEXT_RESET}               Muestra la tabla en orden inverso."
+    echo "${TEXT_BOLD}-h|--help:${TEXT_RESET}        Muestra esta ayuda."
     echo 
 
     exit 0
@@ -96,7 +96,7 @@ OPCION_D=false
 DIR=""
 OPCION_U=false 
 USUARIOS=""
-OP_VALIDAS="-z -d -t -e -sm -sg -r"
+#OP_VALIDAS="-z -d -t -e -sm -sg -r"
 OPCION_T=false
 OPCION_E=false
 OPCION_SM=false
@@ -134,6 +134,7 @@ else
                 #IMPLEMENTACION PARA VARIOS USUARIOS
                 while [[ -n "$1" && "$1" != "-"* ]]; do
                     USUARIOS+="$1 " # añadimos un espacio para que se separen los usuarios
+                    #$USUARIOS contendra una cadena con los usuarios separados por un espacio  
                     shift
                 done
                 ;;
@@ -201,23 +202,31 @@ tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 #Filtrar por usuario (OPCION -u)(para varios usuarios)
 if [[ "$OPCION_U" == true ]]; then 
     #echo "$USUARIOS"
+    # Recorremos los usuarios contnidos en $USUARIOS que habíamos obtenido antes en el case
     for i in $USUARIOS; do
         #echo "$i"
+        #guardamos en la variable tabla_u los procesos que tengan el usuario especificado
         tabla_u=$(echo "$tabla_f" | awk '$4 == "'$i'"')
         if [[ $? -ne 0 ]]; then
             salida_error "Se ha producido un error en el bucle for de la opción -u."
         fi
+
+        #introducimos en la tabla local la infromación de los usuarios que se han indicado
         tabla_loc+="$tabla_u"
+
         if [[ -z "$tabla_loc" ]]; then
             salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
         fi
     done
-   
-    tabla_f=$(echo "$tabla_loc" | sort -k4 -b $REVERSE)
 
     if [[ $? -ne 0 ]]; then
         salida_error "Se ha producido un error en el bucle for de la opción -u."
     fi
+
+    
+    #ordenamos la tabla por el usuario (columna 4)
+    tabla_f=$(echo "$tabla_loc" | sort -k4 -b $REVERSE)
+
 
     if [[ -z "$tabla_f" ]]; then
         salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
@@ -228,6 +237,7 @@ fi
 # Mostrar todos los procesos, incluyendo PID 0 (OPCION -z)
 if [[ "$OPCION_Z" == true ]]; then
     #echo "$REVERSE"
+    #simplemente es mostrar la tabla ya que esta recoge por defecto todos los procesos se ordena por el usuario (columna 4)
     tabla_f=$(echo "$tabla_f" | sort -k 4 -b $REVERSE)
     if [[ $? -ne 0 ]]; then
         salida_error "Se ha producido un error al realizar la opcion -z"
