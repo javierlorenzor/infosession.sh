@@ -188,105 +188,6 @@ fi
 
 tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 
-
-#Filtrar por usuario (OPCION -u)(para un solo usuario)
-#if [[ "$OPCION_U" == true ]]; then  
-    #tabla_f=$(echo "$tabla_f" | awk '$4 == "'$USUARIOS'"'| sort -k4 -b)  # filtramos la tabla por el usuario especificado
-    #Comprobamos que la tabla no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
-    #if [[ -z "$tabla_f" ]]; then
-        #salida_error "Se ha producido un error no hay procesos con el usuario $USUARIOS"
-    #fi 
-#fi
-
-
-#Filtrar por usuario (OPCION -u)(para varios usuarios)
-if [[ "$OPCION_U" == true ]]; then 
-    #echo "$USUARIOS"   
-    # Recorremos los usuarios contnidos en $USUARIOS que habíamos obtenido antes en el case
-    for i in $USUARIOS; do
-        #echo "$i"
-        #guardamos en la variable tabla_u los procesos que tengan el usuario especificado
-        tabla_u=$(echo "$tabla_f" | awk '$4 == "'$i'"')
-        if [[ $? -ne 0 ]]; then
-            salida_error "Se ha producido un error en el bucle for de la opción -u."
-        fi
-
-        #introducimos en la tabla local la infromación de los usuarios que se han indicado
-        tabla_loc+="$tabla_u"
-
-        if [[ -z "$tabla_loc" ]]; then
-            salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
-        fi
-    done
-
-    if [[ $? -ne 0 ]]; then
-        salida_error "Se ha producido un error en el bucle for de la opción -u."
-    fi
-
-    
-    #ordenamos la tabla por el usuario (columna 4)
-    tabla_f=$(echo "$tabla_loc" | sort -k4 -b $REVERSE)
-
-
-    if [[ -z "$tabla_f" ]]; then
-        salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
-    fi
-fi 
-
-
-# Mostrar todos los procesos, incluyendo PID 0 (OPCION -z)
-if [[ "$OPCION_Z" == true ]]; then
-    #echo "$REVERSE"
-    #simplemente es mostrar la tabla ya que esta recoge por defecto todos los procesos se ordena por el usuario (columna 4)
-    tabla_f=$(echo "$tabla_f" | sort -k 4 -b $REVERSE)
-    if [[ $? -ne 0 ]]; then
-        salida_error "Se ha producido un error al realizar la opcion -z"
-    fi
-fi
-
-
-# Filtrar por directorio (OPCION -d)
-if [[ "$OPCION_D" == true ]]; then
-    # Comprobar si el directorio existe (para ello usamos -d que comprueba si el directorio existe)
-    if [[ ! -d "$DIR" ]]; then
-        salida_error "Se ha producido un error el directorio $DIR no existe."
-    fi 
-
-    #sacamos los pid de los procesos que tienen archivos abiertos en el directorio especificado (tr para que esten todos en una línea )
-    pid_lsof_local=$(lsof +d $DIR | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
-
-    #Comprobamos que la variable no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
-    if [[ -z "$pid_lsof_local" ]]; then
-        error_exit "Se ha producido un error no hay procesos con archivos abiertos en el directorio $DIR"
-    fi
-    
-    # Recorremos los PID de los procesos que tienen archivos abiertos en el directorio especificado en DIR
-    for i in $pid_lsof_local; do
-        #Comprobamos que en la columna 3 (pid) sea igual al pid que hemos sacado con lsof
-        tabla_local=$(echo "$tabla_f" | awk '$3 == "'$i'"')
-        # Solo guardar filas con  contenido (para que no imprima líneas vacías)
-        if [[ -n "$tabla_local" ]]; then
-            tabla_d+=$(echo -e "\n $tabla_local  \n" )
-        fi
-    done 
-    #echo "$tabla_d"
-    #echo "$tabla_local"
-    tabla_f=$(echo "$tabla_d" | sort -k4 -b $REVERSE)  
-    if [[ $? -ne 0 ]]; then
-        salida_error "Se ha producido un error no hay procesos con archivos abiertos en el directorio $DIR"
-    fi
-fi
-
-
-#Filtrar por terminal (OPCION -t)
-if [[ "$OPCION_T" == true ]]; then
-
-    tabla_f=$(echo "$tabla_f" | awk '$5 != "?"' | sort -k 5 -b $REVERSE)
-    if [[ $? -ne 0 ]]; then
-        salida_error "Se ha producido un error al filtrar por terminal."
-    fi
-fi
-
 #Funcion para la tabla de sesiones
 if [[ "$OPCION_E" == false  ]]; then
 
@@ -350,6 +251,130 @@ if [[ "$OPCION_E" == false  ]]; then
 
 fi 
 
+
+#Filtrar por usuario (OPCION -u)(para un solo usuario)
+#if [[ "$OPCION_U" == true ]]; then  
+    #tabla_f=$(echo "$tabla_f" | awk '$4 == "'$USUARIOS'"'| sort -k4 -b)  # filtramos la tabla por el usuario especificado
+    #Comprobamos que la tabla no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
+    #if [[ -z "$tabla_f" ]]; then
+        #salida_error "Se ha producido un error no hay procesos con el usuario $USUARIOS"
+    #fi 
+#fi
+
+
+#Filtrar por usuario (OPCION -u)(para varios usuarios)
+if [[ "$OPCION_U" == true ]]; then 
+    #echo "$USUARIOS"
+    if [[ "OPCION_E == true" ]]; then
+    
+        # Recorremos los usuarios contnidos en $USUARIOS que habíamos obtenido antes en el case
+        for i in $USUARIOS; do
+            #echo "$i"
+            #guardamos en la variable tabla_u los procesos que tengan el usuario especificado
+            tabla_u=$(echo "$tabla_f" | awk '$4 == "'$i'"')
+            if [[ $? -ne 0 ]]; then
+                salida_error "Se ha producido un error en el bucle for de la opción -u."
+            fi
+
+            #introducimos en la tabla local la infromación de los usuarios que se han indicado
+            tabla_loc+="$tabla_u"
+
+            if [[ -z "$tabla_loc" ]]; then
+                salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
+            fi
+        done
+
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error en el bucle for de la opción -u."
+        fi
+
+        
+        #ordenamos la tabla por el usuario (columna 4)
+        tabla_f=$(echo "$tabla_loc" | sort -k4 -b $REVERSE)
+
+
+        if [[ -z "$tabla_f" ]]; then
+            salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
+        fi
+    else 
+        #hacemos lo mismo que antes pero para la tabla sesiones 
+        for i in $USUARIOS; do
+            tabla_u=$(echo "$tabla_sesion" | awk '$5 == "'$i'"')
+            if [[ $? -ne 0 ]]; then
+                salida_error "Se ha producido un error en el bucle for de la opción -u."
+            fi
+
+            tabla_loc+="$tabla_u"
+
+            if [[ -z "$tabla_loc" ]]; then
+                salida_error "Se ha producido un error no hay procesos con los usuarios especificados $USUARIOS"
+            fi
+        done
+
+        tabla_sesion=$(echo "$tabla_loc" | sort -k5 -b $REVERSE)
+    fi
+fi 
+
+
+# Mostrar todos los procesos, incluyendo PID 0 (OPCION -z)
+if [[ "$OPCION_Z" == true ]]; then
+    #echo "$REVERSE"
+    #simplemente es mostrar la tabla ya que esta recoge por defecto todos los procesos se ordena por el usuario (columna 4)
+    tabla_f=$(echo "$tabla_f" | sort -k 4 -b $REVERSE)
+    if [[ $? -ne 0 ]]; then
+        salida_error "Se ha producido un error al realizar la opcion -z"
+    fi
+fi
+
+
+# Filtrar por directorio (OPCION -d)
+if [[ "$OPCION_D" == true ]]; then
+    # Comprobar si el directorio existe (para ello usamos -d que comprueba si el directorio existe)
+    if [[ ! -d "$DIR" ]]; then
+        salida_error "Se ha producido un error el directorio $DIR no existe."
+    fi 
+
+    #sacamos los pid de los procesos que tienen archivos abiertos en el directorio especificado (tr para que esten todos en una línea )
+    pid_lsof_local=$(lsof +d $DIR | awk '{print $2}' | tail -n +2 | uniq | tr '\n' ' ')
+
+    #Comprobamos que la variable no esté vacía (para ello usamos -z que comprueba si la cadena está vacía)
+    if [[ -z "$pid_lsof_local" ]]; then
+        error_exit "Se ha producido un error no hay procesos con archivos abiertos en el directorio $DIR"
+    fi
+    
+    # Recorremos los PID de los procesos que tienen archivos abiertos en el directorio especificado en DIR
+    for i in $pid_lsof_local; do
+        #Comprobamos que en la columna 3 (pid) sea igual al pid que hemos sacado con lsof
+        tabla_local=$(echo "$tabla_f" | awk '$3 == "'$i'"')
+        # Solo guardar filas con  contenido (para que no imprima líneas vacías)
+        if [[ -n "$tabla_local" ]]; then
+            tabla_d+=$(echo -e "\n $tabla_local  \n" )
+        fi
+    done 
+    #echo "$tabla_d"
+    #echo "$tabla_local"
+    tabla_f=$(echo "$tabla_d" | sort -k4 -b $REVERSE)  
+    if [[ $? -ne 0 ]]; then
+        salida_error "Se ha producido un error no hay procesos con archivos abiertos en el directorio $DIR"
+    fi
+fi
+
+
+#Filtrar por terminal (OPCION -t)
+if [[ "$OPCION_T" == true ]]; then
+    
+    if [[ "$OPCION_E" == true ]]; then
+        tabla_f=$(echo "$tabla_f" | awk '$5 != "?"' | sort -k 5 -b $REVERSE)
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al filtrar por terminal."
+        fi
+    else   
+        tabla_sesion=$(echo "$tabla_sesion" | awk '$6 != "?"' | sort -k 5 -b $REVERSE)
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al filtrar por terminal."
+        fi
+    fi
+fi
 
 #Ordenar por memoria (OPCION -sm)
 if [[ "$OPCION_SM" == true ]]; then
