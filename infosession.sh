@@ -346,8 +346,8 @@ if [[ "$OPCION_E" == false  ]]; then
 
     # ordenar tabla por usuario (columna 5) (se usa -b para ignorar los espacios en blanco ya que dan problemas por el printf)
     #tabla_sesion=$(echo -e "$tabla_sesion" | sort -d -k 5 --debug -b | REVERSE) 
-    tabla_sesion=$(echo -e "$tabla_sesion" | sed '/^ *$/d' | sort -d -k 5 -b $REVERSE)  # sed es para eliminar una línea vacía que se creaba
-
+    #tabla_sesion=$(echo -e "$tabla_sesion" | sed '/^ *$/d' | sort -d -k 5 -b $REVERSE)  # sed es para eliminar una línea vacía que se creaba
+    tabla_sesion=$(echo -e "$tabla_sesion" | tr -s '\n' | sort -d -k 5 -b $REVERSE) 
 fi 
 
 
@@ -355,6 +355,7 @@ fi
 if [[ "$OPCION_SM" == true ]]; then
 
     if [[ "$OPCION_E" == true ]]; then
+        #opcion -g (general numeric short )
         tabla_f=$(echo "$tabla_f" | sort -g -k 6 -b $REVERSE)
         if [[ $? -ne 0 ]]; then
             salida_error "Se ha producido un error al ordenar la tabla de procesos por memoria."
