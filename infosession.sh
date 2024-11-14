@@ -202,6 +202,7 @@ tabla_f="$tabla_b"  # tabla que recogera los filtros que se le apliquen
 #Filtrar por usuario (OPCION -u)(para varios usuarios)
 if [[ "$OPCION_U" == true ]]; then 
     #echo "$USUARIOS"
+
     # Recorremos los usuarios contnidos en $USUARIOS que habíamos obtenido antes en el case
     for i in $USUARIOS; do
         #echo "$i"
@@ -278,13 +279,7 @@ if [[ "$OPCION_D" == true ]]; then
 fi
 
 
-#Filtrar por terminal (OPCION -t)
-if [[ "$OPCION_T" == true ]]; then
-    tabla_f=$(echo "$tabla_f" | awk '$5 != "?"' ) 
-    if [[ $? -ne 0 ]]; then
-        salida_error "Se ha producido un error al filtrar por terminal."
-    fi
-fi
+
 
 
 #Funcion para la tabla de sesiones
@@ -350,6 +345,21 @@ if [[ "$OPCION_E" == false  ]]; then
 
 fi 
 
+#Filtrar por terminal (OPCION -t)
+if [[ "$OPCION_T" == true ]]; then
+    
+    if [[ "$OPCION_E" == true ]]; then
+        tabla_f=$(echo "$tabla_f" | awk '$5 != "?"' | sort -k 5 -b $REVERSE)
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al filtrar por terminal."
+        fi
+    else
+         tabla_sesion=$(echo "$tabla_sesion" | awk '$6 != "?"' | sort -k 5 -b $REVERSE)
+        if [[ $? -ne 0 ]]; then
+            salida_error "Se ha producido un error al filtrar por terminal."
+        fi
+    fi
+fi
 
 #Ordenar por memoria (OPCION -sm)
 if [[ "$OPCION_SM" == true ]]; then
